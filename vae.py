@@ -7,7 +7,8 @@ import numpy as np
 from tensorflow.examples.tutorials.mnist import input_data
 
 import matplotlib.pyplot as plt
-
+from matplotlib.gridspec import GridSpec
+import os
 
 BATCH_SIZE = 64
 LATENT_SIZE = 100
@@ -42,7 +43,7 @@ class Variational_Encoder(nn.Module):
 
 
 # sample from encoder
-def sample(mean, log_var):
+def sample_dist(mean, log_var):
     eps = Variable(torch.randn((BATCH_SIZE, LATENT_SIZE)))
     return mean + torch.exp(log_var/2) * eps
 
@@ -76,13 +77,14 @@ decoder = Variational_decoder(100, 784)
 params = list(encoder.parameters()) + list(decoder.parameters())
 optimizer = optim.Adam(params)
 
+picture_out_count = 0
 
 for iteration in range(10000):
     x, _ = mnist.train.next_batch(BATCH_SIZE)
     x_variable = Variable(torch.from_numpy(x))
 
     mean, log_var = encoder(x_variable)
-    x_sample = sample(mean, log_var)
+    x_sample = sample_dist(mean, log_var)
     x_sample = decoder(x_sample)
 
     recon_loss = F.binary_cross_entropy(x_sample, x_variable, size_average=False) / BATCH_SIZE
@@ -95,11 +97,26 @@ for iteration in range(10000):
     optimizer.step()
 
     if (iteration % 1000 == 0):
-        test_true_image = x[0].reshape((28, 28))
-        test_sample_image = x_sample.data[0].numpy().reshape((28, 28))
-        plot_image = np.concatenate((test_true_image, test_sample_image), axis=1)
-        plt.imshow(plot_image)
-        plt.show()
+        samples = x_sample[:16].data.numpy()  # get 16 pictures
+        fig = plt.figure(figsize=(4, 4))
+        gs = GridSpec(4, 4)
+        gs.update(wspace=0.05, hspace=0.05)
+
+        for i, sample in enumerate(samples):
+            ax = plt.subplot(gs[i])
+            plt.axis('off')
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+            ax.set_aspect('equal')
+            plt.imshow(sample.reshape(28, 28), cmap='Greys_r')
+
+        if not os.path.exists('out/'):
+            os.makedirs('out/')
+
+        plt.savefig('out/{}.png'.format(str(picture_out_count).zfill(3)))
+        picture_out_count += 1
+        plt.close(fig)
+
 
 
 
