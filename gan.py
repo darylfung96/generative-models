@@ -52,8 +52,8 @@ def sample_z():
 
 mnist = input_data.read_data_sets('../../MNIST_data', one_hot=True)
 
-generator = Generator(Z_DIM, 100, X_SIZE)
-discriminator = Discriminator(X_SIZE, 100)
+generator = Generator(Z_DIM, 256, X_SIZE)
+discriminator = Discriminator(X_SIZE, 256)
 
 d_optim = optim.Adam(discriminator.parameters(), lr=0.0001)
 g_optim = optim.Adam(generator.parameters(), lr=0.0001)
@@ -61,40 +61,39 @@ g_optim = optim.Adam(generator.parameters(), lr=0.0001)
 
 picture_out_count = 0
 
-for iteration in range(1000):
+for iteration in range(20000):
 
-    for train_d_iter in range(100):
-        d_optim.zero_grad()
-        g_optim.zero_grad()
+    d_optim.zero_grad()
+    g_optim.zero_grad()
 
-        x_, _ = mnist.train.next_batch(BATCH_SIZE)
-        x_ = Variable(torch.from_numpy(x_))
+    x_, _ = mnist.train.next_batch(BATCH_SIZE)
+    x_ = Variable(torch.from_numpy(x_))
 
-        #pass input through discriminator
-        d_real_value = discriminator(x_)
-        d_real_error = F.binary_cross_entropy(d_real_value, Variable(torch.ones(BATCH_SIZE)))
+    #pass input through discriminator
+    d_real_value = discriminator(x_)
+    d_real_error = F.binary_cross_entropy(d_real_value, Variable(torch.ones(BATCH_SIZE)))
 
-        #pass fake through discriminator
-        z_ = Variable(torch.rand(BATCH_SIZE, Z_DIM))
-        g_ = generator(z_)
-        d_fake_value = discriminator(g_)
-        d_fake_error = F.binary_cross_entropy(d_fake_value, Variable(torch.zeros(BATCH_SIZE)))
+    #pass fake through discriminator
+    z_ = Variable(torch.rand(BATCH_SIZE, Z_DIM))
+    g_ = generator(z_)
+    d_fake_value = discriminator(g_)
+    d_fake_error = F.binary_cross_entropy(d_fake_value, Variable(torch.zeros(BATCH_SIZE)))
 
-        d_total_error = d_real_error + d_fake_error
+    d_total_error = d_real_error + d_fake_error
 
-        d_optim.step()
+    d_optim.step()
 
-    for train_g_iter in range(100):
-        g_optim.zero_grad()
-        d_optim.zero_grad()
+    #train generator
+    g_optim.zero_grad()
+    d_optim.zero_grad()
 
-        g_ = generator(Variable(torch.rand(BATCH_SIZE, Z_DIM)))
+    g_ = generator(Variable(torch.rand(BATCH_SIZE, Z_DIM)))
 
-        g_value = discriminator(g_)
-        g_error = F.binary_cross_entropy(g_value, Variable(torch.ones(BATCH_SIZE)))
-        g_error.backward()
+    g_value = discriminator(g_)
+    g_error = F.binary_cross_entropy(g_value, Variable(torch.ones(BATCH_SIZE)))
+    g_error.backward()
 
-        g_optim.step()
+    g_optim.step()
 
 
     if iteration % 10 == 0:
