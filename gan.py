@@ -25,25 +25,25 @@ class Generator(nn.Module):
         self.output_size = output_size
 
         self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size*2)
-        self.fc3 = nn.Linear(hidden_size*2, output_size)
+        self.fc2 = nn.Linear(hidden_size, hidden_size*4)
+        self.fc3 = nn.Linear(hidden_size*4, output_size)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        return F.sigmoid(self.fc3(x))
+        return F.tanh(self.fc3(x))
 
 class Discriminator(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(Discriminator, self).__init__()
 
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        self.fc1 = nn.Linear(input_size, hidden_size*4)
+        self.fc2 = nn.Linear(hidden_size*4, hidden_size)
         self.fc3 = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        x = F.dropout(F.relu(self.fc1(x)), 0.5)
+        x = F.dropout(F.relu(self.fc2(x)), 0.5)
         return F.sigmoid(self.fc3(x))
 
 
@@ -60,39 +60,37 @@ g_optim = optim.Adam(generator.parameters(), lr=0.0001)
 
 
 picture_out_count = 0
+BCELoss = nn.BCELoss()
 
 for iteration in range(20000):
 
     d_optim.zero_grad()
-    g_optim.zero_grad()
 
     x_, _ = mnist.train.next_batch(BATCH_SIZE)
     x_ = Variable(torch.from_numpy(x_))
 
     #pass input through discriminator
     d_real_value = discriminator(x_)
-    d_real_error = F.binary_cross_entropy(d_real_value, Variable(torch.ones(BATCH_SIZE)))
+    d_real_error = BCELoss(d_real_value, Variable(torch.ones(BATCH_SIZE)))
 
     #pass fake through discriminator
     z_ = Variable(torch.rand(BATCH_SIZE, Z_DIM))
     g_ = generator(z_)
     d_fake_value = discriminator(g_)
-    d_fake_error = F.binary_cross_entropy(d_fake_value, Variable(torch.zeros(BATCH_SIZE)))
+    d_fake_error = BCELoss(d_fake_value, Variable(torch.zeros(BATCH_SIZE)))
 
     d_total_error = d_real_error + d_fake_error
-
+    d_total_error.backward()
     d_optim.step()
 
     #train generator
     g_optim.zero_grad()
-    d_optim.zero_grad()
 
     g_ = generator(Variable(torch.rand(BATCH_SIZE, Z_DIM)))
-
     g_value = discriminator(g_)
-    g_error = F.binary_cross_entropy(g_value, Variable(torch.ones(BATCH_SIZE)))
-    g_error.backward()
+    g_error = BCELoss(g_value, Variable(torch.ones(BATCH_SIZE)))
 
+    g_error.backward()
     g_optim.step()
 
 
