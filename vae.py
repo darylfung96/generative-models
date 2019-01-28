@@ -62,9 +62,9 @@ class Variational_decoder(nn.Module):
         self.output = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, x):
-        x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
-        x = F.sigmoid(self.output(x))
+        x = F.selu(self.layer1(x))
+        x = F.selu(self.layer2(x))
+        x = torch.sigmoid(self.output(x))
         return x
 
 

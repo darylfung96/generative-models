@@ -31,7 +31,7 @@ class Generator(nn.Module):
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        return F.tanh(self.fc3(x))
+        return torch.tanh(self.fc3(x))
 
 class Discriminator(nn.Module):
     def __init__(self, input_size, hidden_size):
@@ -44,7 +44,7 @@ class Discriminator(nn.Module):
     def forward(self, x):
         x = F.dropout(F.relu(self.fc1(x)), 0.5)
         x = F.dropout(F.relu(self.fc2(x)), 0.5)
-        return F.sigmoid(self.fc3(x))
+        return torch.sigmoid(self.fc3(x))
 
 
 def sample_z():
