@@ -51,7 +51,7 @@ class CVariationalDecoder(nn.Module):
         x = torch.cat([input, condition], 1)
         x = F.relu(self.first_layer(x))
         # x = F.selu(self.second_layer(x))
-        output = torch.sigmoid(self.output_layer(x))
+        output = torch.tanh(self.output_layer(x))
         return output
 
 
@@ -76,7 +76,7 @@ for i in range(10000):
     mean, log_var_sq = encoder(data, c)
     z = sample_dist(mean, log_var_sq)
     output = decoder(z, c)
-
+    output = (output + 1) / 2
     reconstruction_loss = F.binary_cross_entropy(output, data, reduction='sum') / BATCH_SIZE
     kl_loss = torch.mean(torch.sum(-1. - log_var_sq + mean.pow(2) + log_var_sq.exp(), 1) / 2)
 
@@ -97,6 +97,7 @@ for i in range(10000):
         c = Variable(torch.from_numpy(c))
         z = Variable(torch.randn([BATCH_SIZE, LATENT_SIZE]))
         output = decoder(z, c).data.numpy()[:16]
+        output = (output + 1) / 2
 
         fig = plt.figure(figsize=(4, 4))
         gs = GridSpec(4, 4)
