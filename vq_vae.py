@@ -33,6 +33,18 @@ class VectorQuantize(nn.Module):
 
         e = torch.matmul(one_hot_e_index, self.embeddings.weight).view(inputs.shape)
 
+        # find loss
+        # e_loss (commitment loss is to control how much the latent produced from the encoder to
+        # not deviate that much from the codebook)
+        e_loss = torch.mean((e.detach() - inputs) ** 2)
+        q_loss = torch.mean((inputs.detach() - e) ** 2)
+        loss = self.commitment_cost * e_loss + q_loss
+
+        # calculate the latent as the original z(output of encoder) in addition with the change from the
+        # original z to the selected e (codebook)
+        # this cause the latent to not diverge that much from the codebook
+        latent = inputs + (e - inputs).detach()
+        return loss, latent
 
 
 class Decoder(nn.Module):
