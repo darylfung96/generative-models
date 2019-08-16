@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 
+""" network sections """
+#region network_sections
+
 
 class Encoder(nn.Module):
     def __init__(self):
@@ -53,3 +56,7 @@ class Decoder(nn.Module):
 
     def forward(self, inputs):
         pass
+
+
+#endregion network_sections
+"""" end of network sections """
