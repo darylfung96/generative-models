@@ -121,3 +121,21 @@ class Decoder(nn.Module):
 
         return self._3_de_trans_conv(x)
 
+
+class Model(nn.Module):
+    def __init__(self, hidden_units, residual_layers, residual_hidden_units, num_embeddings, embeddings_dim,
+                 commitment_cost):
+        super(Model, self).__init__()
+
+        self._encoder = Encoder(3, hidden_units, residual_layers, residual_hidden_units)
+        self._before_z = nn.Conv2d(in_channels=hidden_units, out_channels=embeddings_dim, kernel_size=1, stride=1)
+        self._vq = VectorQuantize(num_embeddings, embeddings_dim, commitment_cost)
+        self._decoder = Decoder(embeddings_dim, hidden_units, residual_layers, residual_hidden_units)
+
+    def forward(self, inputs):
+        x = self._encoder(inputs)
+        x = self._before_z(x)
+        loss, x = self._vq(x)
+        recon_x = self._decoder(x)
+        return loss, recon_x
+
