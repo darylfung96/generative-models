@@ -29,18 +29,18 @@ class VectorQuantize(nn.Module):
         self.commitment_cost = commitment_cost
 
         self.embeddings = nn.Embedding(num_embeddings, embeddings_dim)
-        self.embeddings.weight.data.uniform(-1/self.num_embeddings, 1/self.num_embeddings)
+        self.embeddings.weight.data.uniform_(-1/self.num_embeddings, 1/self.num_embeddings)
 
     def forward(self, inputs):
         flatten_inputs = inputs.view(-1, self.embeddings_dim)
         # find the nearest neighbour from the inputs to the embedding table
-        distance = torch.sum(flatten_inputs**2, dim=1, keepdims=True) + \
+        distance = torch.sum(flatten_inputs**2, dim=1, keepdim=True) + \
                    torch.sum(self.embeddings.weight**2, dim=1) - \
                    2 * torch.matmul(flatten_inputs, self.embeddings.weight.t())
 
-        selected_e_index = torch.argmin(distance, dim=1)
+        selected_e_index = torch.argmin(distance, dim=1).unsqueeze(1)
         one_hot_e_index = torch.zeros(selected_e_index.shape[0], self.num_embeddings)
-        one_hot_e_index.scatter(1, selected_e_index, 1)
+        one_hot_e_index.scatter_(1, selected_e_index, 1)
 
         e = torch.matmul(one_hot_e_index, self.embeddings.weight).view(inputs.shape)
 
@@ -72,12 +72,9 @@ class Encoder(nn.Module):
         self._3_conv = nn.Conv2d(in_channels=hidden_units,
                                  out_channels=hidden_units,
                                  kernel_size=3,
-                                 stride=2, padding=1)
-        self.layers = nn.ModuleList()
-        for i in range(len(num_layers)):
-            self.layers.append(
-                Residual(hidden_units, residual_hidden_Units)
-            )
+                                 stride=1, padding=1)
+        layer_modules = [Residual(hidden_units, residual_hidden_Units) for i in range(num_layers)]
+        self.layers = nn.Sequential(*layer_modules)
 
     def forward(self, inputs):
         x = self._1_conv(inputs)
@@ -97,11 +94,9 @@ class Decoder(nn.Module):
                                     out_channels=hidden_units,
                                     kernel_size=3,
                                     stride=1, padding=1)
-        self.residual_layers = nn.ModuleList()
-        for i in range(len(num_layers)):
-            self.residual_layers.append(
-                Residual(hidden_units, residual_hidden_units)
-            )
+
+        layer_lists = [Residual(hidden_units, residual_hidden_units) for _ in range(num_layers)]
+        self.residual_layers = nn.Sequential(*layer_lists)
 
         self._2_de_trans_conv = nn.ConvTranspose2d(in_channels=hidden_units,
                                                    out_channels=hidden_units//2,
