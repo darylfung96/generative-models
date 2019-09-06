@@ -59,36 +59,54 @@ class VectorQuantize(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels, hidden_units, num_layers, residual_hidden_Units):
+    def __init__(self, in_channels, hidden_units, num_layers, residual_hidden_units, number_pre_conv):
         super(Encoder, self).__init__()
-        self._1_conv = nn.Conv2d(in_channels=in_channels,
-                                 out_channels=hidden_units//2,
-                                 kernel_size=4,
-                                 stride=2, padding=1)
-        self._2_conv = nn.Conv2d(in_channels=hidden_units//2,
-                                 out_channels=hidden_units,
-                                 kernel_size=4,
-                                 stride=2, padding=1)
-        self._3_conv = nn.Conv2d(in_channels=hidden_units,
-                                 out_channels=hidden_units,
-                                 kernel_size=3,
-                                 stride=1, padding=1)
-        layer_modules = [Residual(hidden_units, residual_hidden_Units) for i in range(num_layers)]
+
+        assert number_pre_conv == 2 or number_pre_conv == 4
+
+        if number_pre_conv == 4:
+            layer_modules = [
+                nn.Conv2d(in_channels=in_channels,
+                          out_channels=hidden_units//2,
+                          kernel_size=4,
+                          stride=2, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=hidden_units // 2,
+                          out_channels=hidden_units,
+                          kernel_size=4,
+                          stride=2, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=hidden_units,
+                          out_channels=hidden_units,
+                          kernel_size=3,
+                          stride=1, padding=1)
+
+            ]
+        elif number_pre_conv == 2:
+            layer_modules = [
+                nn.Conv2d(in_channels=hidden_units // 2,
+                          out_channels=hidden_units,
+                          kernel_size=4,
+                          stride=2, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=hidden_units,
+                          out_channels=hidden_units,
+                          kernel_size=3,
+                          stride=1, padding=1)
+            ]
+
+        for i in range(num_layers):
+            layer_modules.append(Residual(hidden_units, residual_hidden_units) for i in range(num_layers))
+        layer_modules.append(nn.ReLU(inplace=True))
+
         self.layers = nn.Sequential(*layer_modules)
 
     def forward(self, inputs):
-        x = self._1_conv(inputs)
-        x = F.relu(x)
-
-        x = self._2_conv(x)
-        x = F.relu(x)
-
-        x = self._3_conv(x)
-        return self.layers(x)
+        return self.layers
 
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels, hidden_units, num_layers, residual_hidden_units):
+    def __init__(self, in_channels, hidden_units, num_layers, residual_hidden_units, number_post_trans_conv):
         super(Decoder, self).__init__()
         self._1_de_conv = nn.Conv2d(in_channels=in_channels,
                                     out_channels=hidden_units,
@@ -98,23 +116,32 @@ class Decoder(nn.Module):
         layer_lists = [Residual(hidden_units, residual_hidden_units) for _ in range(num_layers)]
         self.residual_layers = nn.Sequential(*layer_lists)
 
-        self._2_de_trans_conv = nn.ConvTranspose2d(in_channels=hidden_units,
-                                                   out_channels=hidden_units//2,
-                                                   kernel_size=4,
-                                                   stride=2, padding=1)
-        self._3_de_trans_conv = nn.ConvTranspose2d(in_channels=hidden_units//2,
-                                                   out_channels=3,
-                                                   kernel_size=4,
-                                                   stride=2, padding=1)
+        if number_post_trans_conv == 2:
+            post_layers_modules = [
+                nn.ConvTranspose2d(in_channels=hidden_units,
+                                   out_channels=hidden_units//2,
+                                   kernel_size=4,
+                                   stride=2, padding=1),
+                nn.ReLU(inplace=True),
+                nn.ConvTranspose2d(in_channels=hidden_units // 2,
+                                   out_channels=3,
+                                   kernel_size=4,
+                                   stride=2, padding=1)
+            ]
+        elif number_post_trans_conv == 1:
+            post_layers_modules = [
+                nn.ConvTranspose2d(in_channels=hidden_units,
+                                   out_channels=3,
+                                   kernel_size=4,
+                                   stride=2, padding=1)
+            ]
+
+        self.post_block = nn.Sequential(*post_layers_modules)
 
     def forward(self, inputs):
         x = self._1_de_conv(inputs)
         x = self.residual_layers(x)
-
-        x = self._2_de_trans_conv(x)
-        x = F.relu(x)
-
-        return self._3_de_trans_conv(x)
+        return self.post_block(x)
 
 
 class Model(nn.Module):
