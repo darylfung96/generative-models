@@ -147,16 +147,16 @@ for epoch in range(200):
         d_total_error.backward()
         d_optim.step()
 
-        # train generator
-        g_optim.zero_grad()
-        g_ = generator(Variable(torch.randn(BATCH_SIZE, Z_DIM)).to(device))
-        g_value = discriminator(g_)
-        g_error = -torch.mean(g_value)
-        g_error.backward()
-        g_optim.step()
-
 
         if i % 5 == 0:
+            # train generator
+            g_optim.zero_grad()
+            g_ = generator(Variable(torch.randn(BATCH_SIZE, Z_DIM)).to(device))
+            g_value = discriminator(g_)
+            g_error = -torch.mean(g_value)
+            g_error.backward()
+            g_optim.step()
+
             samples = g_[:16].data.cpu().numpy() # get 16 pictures
             fig = plt.figure(figsize=(4, 4))
             gs = gridspec.GridSpec(4, 4)
