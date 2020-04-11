@@ -61,7 +61,7 @@ generator = Generator(Z_DIM, 256, X_SIZE)
 discriminator = Discriminator(X_SIZE, 256)
 
 d_optim = optim.Adam(discriminator.parameters(), lr=0.0002, betas=[0.5, 0.999])
-g_optim = optim.Adam(generator.parameters(), lr=0.0002, betas=[0.5, 0.999])
+g_optim = optim.Adam(generator.parameters(), lr=0.0002)
 
 
 picture_out_count = 0
